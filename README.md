@@ -1,0 +1,2 @@
+# ldldld
+RAHASIA NEGARA
