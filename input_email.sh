@@ -4,21 +4,16 @@
 PASSWORD="qwertyui"
 # -------------------
 
-# MENGAMBIL ID DAN MEMBERSIHKANNYA (Menghapus spasi/enter)
-RAW_ID=$(getprop ro.boot.pad_code)
-DEVICE_ID=$(echo "$RAW_ID" | tr -cd '[:alnum:]')
+# MENGAMBIL ID DARI TEMPAT YANG BENAR (ro.boot.pad_code)
+DEVICE_ID=$(getprop ro.boot.pad_code)
 
-echo "----------------------------------------------"
-echo "RUNNING AUTO-LOGIN"
-echo "DEVICE ID: $DEVICE_ID"
-echo "----------------------------------------------"
+echo "Mendeteksi Device ID: $DEVICE_ID"
 
 # ==========================================
 # DAFTAR PEMETAAN DEVICE ID -> EMAIL
 # ==========================================
 case "$DEVICE_ID" in
     "APP61I5GDN1EYXIG") EMAIL="bams19feb00027@deyarda.com" ;;
-    "APP62F5UQGCXWE16") EMAIL="bams19feb00027@deyarda.com" ;;
     "ATP5CO53L4P2BK0J") EMAIL="bams19feb00028@deyarda.com" ;;
     "APP62C5TE8YRILHC") EMAIL="bams19feb00029@deyarda.com" ;;
     "ATP5CN5325L23HC8") EMAIL="bams19feb00030@deyarda.com" ;;
@@ -41,42 +36,49 @@ case "$DEVICE_ID" in
     *) EMAIL="" ;;
 esac
 
-if [ -z "$EMAIL" ]; then
-    echo "❌ ERROR: ID [$DEVICE_ID] tidak terdaftar di script!"
-    exit 1
+# ==========================================
+# EKSEKUSI LOGIN OTOMATIS
+# ==========================================
+if [ -n "$EMAIL" ]; then
+    echo "1. Memasukkan email: $EMAIL"
+    input text "$EMAIL"
+    sleep 1
+    input keyevent 66 # Tekan Enter
+    
+    echo "Menunggu halaman password loading..."
+    sleep 6 
+    
+    echo "2. Memasukkan password..."
+    input text "$PASSWORD"
+    sleep 1
+    input keyevent 66 # Tekan Enter
+    
+    echo "Menunggu halaman persetujuan Google..."
+    sleep 8 
+    
+    echo "3. Mencari tombol Setuju / I agree..."
+    DUMP_FILE="/data/local/tmp/g_dump.xml"
+    uiautomator dump $DUMP_FILE > /dev/null 2>&1
+    
+    NODE=$(grep -iE "setuju|agree" $DUMP_FILE | tail -n 1)
+    
+    if [ -n "$NODE" ]; then
+        echo "Tombol ditemukan! Melakukan klik otomatis..."
+        BOUNDS=$(echo "$NODE" | grep -o 'bounds="[^"]*"' | cut -d '"' -f 2)
+        COORDS=$(echo "$BOUNDS" | tr '[],' '   ')
+        set -- $COORDS
+        
+        CX=$(( ($1 + $3) / 2 ))
+        CY=$(( ($2 + $4) / 2 ))
+        
+        input tap $CX $CY
+    else
+        echo "Peringatan: Tombol tidak terbaca. Melakukan klik paksa di sudut kanan bawah..."
+        input tap 850 1800 
+    fi
+    
+    echo "✅ Proses eksekusi untuk $EMAIL selesai!"
+    
+else
+    echo "❌ Batal: Device ID tidak terdaftar di script!"
 fi
-
-# ==========================================
-# EKSEKUSI KOORDINAT (RESOLUSI 1080p)
-# ==========================================
-
-echo "1. Mengetik Email..."
-# Klik kotak input email
-input tap 540 850
-sleep 1
-input text "$EMAIL"
-sleep 1
-# Klik tombol 'Next' atau Enter
-input keyevent 66
-sleep 8
-
-echo "2. Mengetik Password..."
-# Klik kotak input password
-input tap 540 950
-sleep 1
-input text "$PASSWORD"
-sleep 1
-# Klik tombol 'Next' atau Enter
-input keyevent 66
-sleep 12
-
-echo "3. Klik Persetujuan (I Agree & Accept)..."
-# Melakukan klik di area pojok kanan bawah berkali-kali 
-# untuk melewati 'I Agree' dan 'Accept' Google Services
-for i in 1 2 3 4; do
-    echo "Klik persetujuan ke-$i..."
-    input tap 950 1820
-    sleep 5
-done
-
-echo "✅ SELESAI"
