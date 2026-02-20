@@ -9,10 +9,10 @@ DEVICE_ID=$(getprop ro.boot.pad_code)
 echo "Mendeteksi Device ID: $DEVICE_ID"
 
 # ==========================================
-# DAFTAR PEMETAAN DEVICE ID -> EMAIL
+# DAFTAR LENGKAP DEVICE ID -> EMAIL
 # ==========================================
 case "$DEVICE_ID" in
-    "APP61I5GDN1EYXIG") EMAIL="bams19feb00027@deyarda.com" ;; # Device Baru
+    "APP61I5GDN1EYXIG") EMAIL="bams19feb00027@deyarda.com" ;;
     "APP62F5UQGCXWE16") EMAIL="bams19feb00027@deyarda.com" ;;
     "ATP5CO53L4P2BK0J") EMAIL="bams19feb00028@deyarda.com" ;;
     "APP62C5TE8YRILHC") EMAIL="bams19feb00029@deyarda.com" ;;
@@ -37,66 +37,66 @@ case "$DEVICE_ID" in
 esac
 
 if [ -z "$EMAIL" ]; then
-    echo "❌ Batal: Device ID tidak terdaftar!"
+    echo "❌ Batal: Device ID ($DEVICE_ID) tidak terdaftar!"
     exit 1
 fi
 
 # ==========================================
-# 1. DETEKSI & INPUT EMAIL
+# 1. DETEKSI & KLIK FORM EMAIL
 # ==========================================
+echo "Mencari form input email..."
 DUMP_FILE="/data/local/tmp/input_detect.xml"
 uiautomator dump $DUMP_FILE > /dev/null 2>&1
 
-# Cari kolom input email (teks "Email" atau "ponsel" atau "phone")
-NODE_EMAIL=$(grep -iE "Email|ponsel|phone" $DUMP_FILE | head -n 1)
+# Coba cari ID kotak email Google (identifierId)
+NODE_EMAIL=$(grep -iE 'resource-id="identifierId"|text="Email|ponsel|phone"' $DUMP_FILE | head -n 1)
 
 if [ -n "$NODE_EMAIL" ]; then
-    echo "Form email terdeteksi, fokus ke kolom..."
-    BOUNDS=$(echo "$NODE_EMAIL" | grep -o 'bounds="[^"]*"' | cut -d '"' -f 2)
-    COORDS=$(echo "$BOUNDS" | tr '[],' '   ')
-    set -- $COORDS
-    input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
+    BOUNDS=$(echo "$NODE_EMAIL" | grep -o 'bounds="[^"]*"' | cut -d '"' -f 2 | tr '[],' '   ')
+    set -- $BOUNDS
+    CX=$(( ($1 + $3) / 2 ))
+    CY=$(( ($2 + $4) / 2 ))
+    input tap $CX $CY
+    sleep 1
+    input tap $CX $CY # Klik dua kali agar pasti fokus
+else
+    # Jika sistem gagal baca, klik paksa di tengah layar (posisi umum kotak email)
+    input tap 500 900
     sleep 1
 fi
 
-echo "Memasukkan email: $EMAIL"
+# ==========================================
+# 2. INPUT EMAIL & PASSWORD
+# ==========================================
+echo "Mengetik email: $EMAIL"
 input text "$EMAIL"
 sleep 1
 input keyevent 66 # Enter
-
-# ==========================================
-# 2. INPUT PASSWORD
-# ==========================================
-echo "Menunggu halaman password..."
 sleep 7
 
-# Kadang perlu klik form password juga jika tidak auto-fokus
-input tap 500 1000 # Klik area tengah layar untuk jaga-jaga fokus
+echo "Mengetik password..."
+# Klik area password untuk jaga-jaga
+input tap 500 1000 
+sleep 1
 input text "$PASSWORD"
 sleep 1
 input keyevent 66 # Enter
-
-# ==========================================
-# 3. AUTO AGREE (LOOPING)
-# ==========================================
-echo "Menunggu halaman persetujuan Google..."
 sleep 12
 
+# ==========================================
+# 3. AUTO AGREE / SETUJU (LOOP 4X)
+# ==========================================
 for i in 1 2 3 4; do
-    echo "Mencari tombol persetujuan (Langkah $i)..."
+    echo "Mencari tombol persetujuan ($i)..."
     uiautomator dump $DUMP_FILE > /dev/null 2>&1
-    
-    # Deteksi teks setuju/agree/accept/lainnya
     NODE_AGREE=$(grep -iE "agree|setuju|accept|terima|more|lainnya|next|berikutnya|saya" $DUMP_FILE | tail -n 1)
     
     if [ -n "$NODE_AGREE" ]; then
-        echo "Tombol ditemukan! Mengeksekusi klik..."
-        BOUNDS=$(echo "$NODE_AGREE" | grep -o 'bounds="[^"]*"' | cut -d '"' -f 2)
-        COORDS=$(echo "$BOUNDS" | tr '[],' '   ')
-        set -- $COORDS
+        BOUNDS=$(echo "$NODE_AGREE" | grep -o 'bounds="[^"]*"' | cut -d '"' -f 2 | tr '[],' '   ')
+        set -- $BOUNDS
         input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
     else
-        echo "Tombol tidak terbaca, klik paksa sudut kanan bawah..."
+        # Klik paksa area tombol biru pojok kanan bawah
         input tap 850 1850
     fi
     sleep 6
