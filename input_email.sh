@@ -5,7 +5,7 @@ PASSWORD="qwertyui"
 # -------------------
 
 DEVICE_ID=$(getprop ro.boot.pad_code)
-echo "Mendeteksi Device ID: $DEVICE_ID"
+echo "Device: $DEVICE_ID"
 
 # ==========================================
 # DAFTAR DEVICE ID -> EMAIL
@@ -35,61 +35,44 @@ case "$DEVICE_ID" in
     *) EMAIL="" ;;
 esac
 
-if [ -z "$EMAIL" ]; then
-    echo "❌ Device ID ($DEVICE_ID) tidak terdaftar!"
-    exit 1
-fi
+if [ -z "$EMAIL" ]; then echo "❌ ID Tidak Terdaftar"; exit 1; fi
 
 # ==========================================
-# 1. INPUT EMAIL (KLIK PAKSA)
+# EKSEKUSI KOORDINAT (1080p)
 # ==========================================
-echo "Memicu form email..."
-# Mengetuk area tengah atas layar di mana kotak email biasanya berada
-input tap 500 900 
-sleep 0.5
-input tap 500 900 
-sleep 1.5
 
-echo "Mengetik: $EMAIL"
+echo "1. Klik Form Email & Ketik..."
+# Koordinat kotak email tengah
+input tap 540 850
+sleep 1
 input text "$EMAIL"
 sleep 1
-input keyevent 66 # Enter
+# Tombol 'Next' / Enter
+input tap 900 1150 
+input keyevent 66
 sleep 8
 
-# ==========================================
-# 2. INPUT PASSWORD (KLIK PAKSA)
-# ==========================================
-echo "Memicu form password..."
-# Kotak password biasanya sedikit lebih rendah dari email
-input tap 500 1000
+echo "2. Klik Form Password & Ketik..."
+# Koordinat kotak password
+input tap 540 950
 sleep 1
 input text "$PASSWORD"
 sleep 1
-input keyevent 66 # Enter
+# Tombol 'Next' / Enter
+input tap 900 1200
+input keyevent 66
 sleep 12
 
-# ==========================================
-# 3. AUTO AGREE (BRUTE FORCE CLICK)
-# ==========================================
-# Loop ini akan mencoba mendeteksi tombol, 
-# tapi jika gagal tetap klik di pojok kanan bawah
-for i in 1 2 3 4; do
-    echo "Persetujuan Langkah $i..."
-    DUMP_FILE="/data/local/tmp/dump.xml"
-    uiautomator dump $DUMP_FILE > /dev/null 2>&1
-    
-    # Cari teks tombol
-    NODE=$(grep -iE "agree|setuju|accept|terima|more|lainnya|next|berikutnya|saya" $DUMP_FILE | tail -n 1)
-    
-    if [ -n "$NODE" ]; then
-        BOUNDS=$(echo "$NODE" | grep -o 'bounds="[^"]*"' | cut -d '"' -f 2 | tr '[],' '   ')
-        set -- $BOUNDS
-        input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
-    else
-        # Klik paksa di area tombol BIRU (bawah kanan)
-        input tap 850 1850 
-    fi
-    sleep 6
-done
+echo "3. Klik I Agree..."
+# Tombol 'I Agree' biasanya di pojok kanan bawah
+input tap 880 1800
+sleep 6
 
-echo "✅ PROSES SELESAI UNTUK $EMAIL"
+echo "4. Klik Accept (Google Services)..."
+# Terkadang muncul tombol 'More' dulu baru 'Accept'
+input tap 880 1800 # Klik More / Scroll down
+sleep 1
+input tap 880 1800 # Klik Accept
+sleep 4
+
+echo "✅ SELESAI"
