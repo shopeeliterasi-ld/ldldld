@@ -5,7 +5,7 @@ PASSWORD="qwertyui"
 # -------------------
 
 DEVICE_ID=$(getprop ro.boot.pad_code)
-echo "Device: $DEVICE_ID"
+echo "Processing Device: $DEVICE_ID"
 
 # ==========================================
 # DAFTAR DEVICE ID -> EMAIL
@@ -35,44 +35,45 @@ case "$DEVICE_ID" in
     *) EMAIL="" ;;
 esac
 
-if [ -z "$EMAIL" ]; then echo "❌ ID Tidak Terdaftar"; exit 1; fi
+if [ -z "$EMAIL" ]; then echo "❌ Email tidak ditemukan untuk ID ini."; exit 1; fi
 
 # ==========================================
-# EKSEKUSI KOORDINAT (1080p)
+# EKSEKUSI KOORDINAT TETAP (1080p)
 # ==========================================
 
-echo "1. Klik Form Email & Ketik..."
-# Koordinat kotak email tengah
-input tap 540 850
+echo "1. Memfokuskan & Mengetik Email..."
+# Klik area kotak email (beberapa titik agar pasti kena)
+input tap 540 800
+input tap 540 900
 sleep 1
 input text "$EMAIL"
 sleep 1
-# Tombol 'Next' / Enter
-input tap 900 1150 
+# Klik tombol 'Next' biru (kanan bawah area tengah)
+input tap 900 1200
 input keyevent 66
 sleep 8
 
-echo "2. Klik Form Password & Ketik..."
-# Koordinat kotak password
+echo "2. Memfokuskan & Mengetik Password..."
+# Klik area kotak password
 input tap 540 950
 sleep 1
 input text "$PASSWORD"
 sleep 1
-# Tombol 'Next' / Enter
+# Klik tombol 'Next' biru
 input tap 900 1200
 input keyevent 66
 sleep 12
 
-echo "3. Klik I Agree..."
-# Tombol 'I Agree' biasanya di pojok kanan bawah
-input tap 880 1800
-sleep 6
+echo "3. Melewati Halaman Persetujuan..."
+# Tombol 'I Agree' di kanan bawah
+input tap 900 1800
+sleep 7
 
-echo "4. Klik Accept (Google Services)..."
-# Terkadang muncul tombol 'More' dulu baru 'Accept'
-input tap 880 1800 # Klik More / Scroll down
-sleep 1
-input tap 880 1800 # Klik Accept
-sleep 4
+echo "4. Melewati Layar Google Services..."
+# Klik 'More' (jika ada) lalu 'Accept'
+input tap 900 1800
+sleep 2
+input tap 900 1800
+sleep 3
 
-echo "✅ SELESAI"
+echo "✅ SELESAI: Akun $EMAIL berhasil diproses."
