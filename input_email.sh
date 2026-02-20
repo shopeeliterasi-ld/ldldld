@@ -12,6 +12,7 @@ echo "Mendeteksi Device ID: $DEVICE_ID"
 # DAFTAR PEMETAAN DEVICE ID -> EMAIL
 # ==========================================
 case "$DEVICE_ID" in
+    "APP61I5GDN1EYXIG") EMAIL="bams19feb00027@deyarda.com" ;;
     "APP62F5UQGCXWE16") EMAIL="bams19feb00027@deyarda.com" ;;
     "ATP5CO53L4P2BK0J") EMAIL="bams19feb00028@deyarda.com" ;;
     "APP62C5TE8YRILHC") EMAIL="bams19feb00029@deyarda.com" ;;
@@ -88,3 +89,4 @@ for i in 1 2 3 4; do
 done
 
 echo "✅ PROSES LOGIN SELESAI UNTUK $EMAIL"
+
