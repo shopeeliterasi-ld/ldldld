@@ -4,9 +4,13 @@
 PASSWORD="qwertyui"
 # -------------------
 
-# MENGAMBIL ID DARI ro.boot.pad_code
-DEVICE_ID=$(getprop ro.boot.pad_code)
-echo "Mendeteksi Device ID: $DEVICE_ID"
+# MENGAMBIL DEVICE ID & MEMBERSIHKAN KARAKTER TERSEMBUNYI
+RAW_ID=$(getprop ro.boot.pad_code)
+DEVICE_ID=$(echo "$RAW_ID" | tr -d '[:space:]' | tr -d '\r')
+
+echo "------------------------------------------"
+echo "Mendeteksi Device ID: |$DEVICE_ID|"
+echo "------------------------------------------"
 
 # ==========================================
 # DAFTAR PEMETAAN DEVICE ID -> EMAIL
@@ -36,57 +40,63 @@ case "$DEVICE_ID" in
     *) EMAIL="" ;;
 esac
 
-# ==========================================
-# EKSEKUSI LOGIN & AUTO AGREE
-# ==========================================
+# VALIDASI EMAIL
 if [ -z "$EMAIL" ]; then
-    echo "❌ Batal: Device ID tidak terdaftar!"
+    echo "❌ ERROR: Device ID [$DEVICE_ID] TIDAK TERDAFTAR!"
+    echo "Pastikan ID di script sama persis dengan ID di atas."
     exit 1
 fi
 
-echo "1. Memasukkan email: $EMAIL"
+# ==========================================
+# LANGKAH 1: INPUT EMAIL
+# ==========================================
+echo "1. Memproses Email: $EMAIL"
+# Klik area kotak email (tengah layar 1080p)
+input tap 540 850
+sleep 1
 input text "$EMAIL"
-sleep 2
-input keyevent 66
-    
+sleep 1
+input keyevent 66 # Enter
+
+# ==========================================
+# LANGKAH 2: INPUT PASSWORD
+# ==========================================
 echo "Menunggu halaman password..."
-sleep 7 
-    
-echo "2. Memasukkan password..."
+sleep 8
+# Klik area kotak password
+input tap 540 950
+sleep 1
 input text "$PASSWORD"
-sleep 2
-input keyevent 66
-    
-echo "Menunggu halaman persetujuan Google (12 detik)..."
+sleep 1
+input keyevent 66 # Enter
+
+# ==========================================
+# LANGKAH 3: AUTO AGREE (LOOPING 4 KALI)
+# ==========================================
+echo "Menunggu halaman persetujuan (12 detik)..."
 sleep 12
 
-# LOOPING UNTUK KLIK SEMUA TOMBOL PERSETUJUAN
-# (Langkah ini akan mencoba klik tombol 'I Agree' dan 'Accept')
 for i in 1 2 3 4; do
     echo "Mencari tombol persetujuan (Langkah $i)..."
     DUMP_FILE="/data/local/tmp/g_dump.xml"
     uiautomator dump $DUMP_FILE > /dev/null 2>&1
     
-    # Mencari kata kunci persetujuan (I Agree, Accept, More, etc.)
+    # Cari tombol berdasarkan teks (I Agree, Saya Setuju, Accept, dll)
     NODE=$(grep -iE "agree|setuju|accept|terima|more|lainnya|next|berikutnya" $DUMP_FILE | tail -n 1)
     
     if [ -n "$NODE" ]; then
-        echo "Tombol teks ditemukan! Mengeksekusi klik..."
-        BOUNDS=$(echo "$NODE" | grep -o 'bounds="[^"]*"' | cut -d '"' -f 2)
-        COORDS=$(echo "$BOUNDS" | tr '[],' '   ')
-        set -- $COORDS
-        CX=$(( ($1 + $3) / 2 ))
-        CY=$(( ($2 + $4) / 2 ))
-        input tap $CX $CY
+        echo "Tombol teks ditemukan! Klik..."
+        BOUNDS=$(echo "$NODE" | grep -o 'bounds="[^"]*"' | cut -d '"' -f 2 | tr '[],' '   ')
+        set -- $BOUNDS
+        input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
     else
-        echo "Tombol teks tidak terbaca, melakukan klik paksa di area tombol umum..."
-        # Klik area bawah kanan (posisi standar tombol I Agree/Accept)
-        input tap 800 1900
-        sleep 1
-        input tap 850 1750
+        echo "Tombol tidak terbaca, klik koordinat pojok kanan bawah..."
+        # Klik area bawah kanan (untuk layar 1080p)
+        input tap 900 1800
     fi
-    sleep 6 # Tunggu proses loading setelah klik
+    sleep 6 
 done
 
+echo "------------------------------------------"
 echo "✅ PROSES LOGIN SELESAI UNTUK $EMAIL"
-
+echo "------------------------------------------"
