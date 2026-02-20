@@ -4,19 +4,18 @@
 PASSWORD="qwertyui"
 # -------------------
 
-# MENGAMBIL ID DAN MEMBERSIHKANNYA TOTAL
-# tr -cd '[:alnum:]' akan menghapus SEMUA karakter kecuali huruf dan angka
+# MENGAMBIL ID DAN MEMBERSIHKANNYA (Menghapus spasi/enter)
 RAW_ID=$(getprop ro.boot.pad_code)
 DEVICE_ID=$(echo "$RAW_ID" | tr -cd '[:alnum:]')
 
 echo "----------------------------------------------"
-echo "DEBUG ID: *${DEVICE_ID}*" 
+echo "RUNNING AUTO-LOGIN"
+echo "DEVICE ID: $DEVICE_ID"
 echo "----------------------------------------------"
 
 # ==========================================
 # DAFTAR PEMETAAN DEVICE ID -> EMAIL
 # ==========================================
-# Pastikan ID di bawah ini TIDAK ada spasi di dalamnya
 case "$DEVICE_ID" in
     "APP61I5GDN1EYXIG") EMAIL="bams19feb00027@deyarda.com" ;;
     "APP62F5UQGCXWE16") EMAIL="bams19feb00027@deyarda.com" ;;
@@ -43,34 +42,41 @@ case "$DEVICE_ID" in
 esac
 
 if [ -z "$EMAIL" ]; then
-    echo "❌ GAGAL: ID *${DEVICE_ID}* tidak cocok dengan daftar di atas."
+    echo "❌ ERROR: ID [$DEVICE_ID] tidak terdaftar di script!"
     exit 1
 fi
 
 # ==========================================
-# EKSEKUSI KOORDINAT (1080p)
+# EKSEKUSI KOORDINAT (RESOLUSI 1080p)
 # ==========================================
-echo "1. Mengetik Email: $EMAIL"
+
+echo "1. Mengetik Email..."
+# Klik kotak input email
 input tap 540 850
 sleep 1
 input text "$EMAIL"
 sleep 1
-input keyevent 66 
+# Klik tombol 'Next' atau Enter
+input keyevent 66
 sleep 8
 
 echo "2. Mengetik Password..."
+# Klik kotak input password
 input tap 540 950
 sleep 1
 input text "$PASSWORD"
 sleep 1
+# Klik tombol 'Next' atau Enter
 input keyevent 66
 sleep 12
 
-echo "3. Auto Agree & Accept..."
+echo "3. Klik Persetujuan (I Agree & Accept)..."
+# Melakukan klik di area pojok kanan bawah berkali-kali 
+# untuk melewati 'I Agree' dan 'Accept' Google Services
 for i in 1 2 3 4; do
-    # Klik area pojok kanan bawah untuk resolusi 1080p
-    input tap 950 1800
+    echo "Klik persetujuan ke-$i..."
+    input tap 950 1820
     sleep 5
 done
 
-echo "✅ PROSES LOGIN SELESAI"
+echo "✅ SELESAI"
