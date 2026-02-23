@@ -1,84 +1,61 @@
 #!/system/bin/sh
 
-# --- KONFIGURASI ---
-PASSWORD="qwertyui"
-# -------------------
+# === KONFIGURASI BACKUP ===
+PKG_NAME="com.lftgbqi"
+# Lokasi output file ZIP gabungan (Sesuaikan dengan target install.sh)
+OUTPUT_ZIP="/sdcard/Download/gg_melolo.zip"
+# Folder sementara
+TMP_DIR="/data/local/tmp/gg_backup_temp"
+DATA_DIR="/data/data/$PKG_NAME"
 
-# MENGAMBIL ID DARI TEMPAT YANG BENAR (ro.boot.pad_code)
-DEVICE_ID=$(getprop ro.boot.pad_code)
+echo "=========================================================="
+echo ">>> === Auto-Backup GameGuardian / Tasker ==="
+echo "=========================================================="
 
-echo "Mendeteksi Device ID: $DEVICE_ID"
+# 1. Matikan aplikasi agar database tidak corrupt saat dibackup
+echo ">>> [1/4] Menghentikan aplikasi..."
+am force-stop "$PKG_NAME"
 
-# ==========================================
-# DAFTAR PEMETAAN DEVICE ID -> EMAIL
-# ==========================================
-case "$DEVICE_ID" in
-    "APP61I5GDN1EYXIG") EMAIL="bams19feb00027@deyarda.com" ;;
-    "ATP5CO53L4P2BK0J") EMAIL="bams19feb00028@deyarda.com" ;;
-    "APP62C5TE8YRILHC") EMAIL="bams19feb00029@deyarda.com" ;;
-    "ATP5CN5325L23HC8") EMAIL="bams19feb00030@deyarda.com" ;;
-    "APP5CJ510CBI5GFC") EMAIL="bams19feb00031@deyarda.com" ;;
-    "APP62C5TE8ZLHDLU") EMAIL="bams19feb00032@deyarda.com" ;;
-    "APP62F5UQGCNWSN8") EMAIL="bams19feb00033@deyarda.com" ;;
-    "APP62C5TE8ZLHDLT") EMAIL="bams19feb00034@deyarda.com" ;;
-    "APP62C5TE8ZLHDLY") EMAIL="bams19feb00035@deyarda.com" ;;
-    "APP6295RVATRL602") EMAIL="bams19feb00036@deyarda.com" ;;
-    "APP62C5TE8YRILH9") EMAIL="bams19feb00037@deyarda.com" ;;
-    "APP62C5TE8YRILHA") EMAIL="bams19feb00038@deyarda.com" ;;
-    "APP5CJ511CYKDJI8") EMAIL="bams19feb00039@deyarda.com" ;;
-    "APP5C64UAZZKIP6S") EMAIL="bams19feb00040@deyarda.com" ;;
-    "APP5BC4I6H7TXBC2") EMAIL="bams19feb00041@deyarda.com" ;;
-    "APP62C5TE8YRILHD") EMAIL="bams19feb00042@deyarda.com" ;;
-    "APP62F5UQGCXWE15") EMAIL="bams19feb00043@deyarda.com" ;;
-    "APP62F5UQGCXWE14") EMAIL="bams19feb00044@deyarda.com" ;;
-    "APP62F5UQGEBUCYI") EMAIL="bams19feb00045@deyarda.com" ;;
-    "APP5CJ511CY0ECRS") EMAIL="bams19feb00046@deyarda.com" ;;
-    *) EMAIL="" ;;
-esac
+# 2. Siapkan folder sementara
+rm -rf "$TMP_DIR"
+mkdir -p "$TMP_DIR"
 
-# ==========================================
-# EKSEKUSI LOGIN OTOMATIS
-# ==========================================
-if [ -n "$EMAIL" ]; then
-    echo "1. Memasukkan email: $EMAIL"
-    input text "$EMAIL"
-    sleep 1
-    input keyevent 66 # Tekan Enter
-    
-    echo "Menunggu halaman password loading..."
-    sleep 6 
-    
-    echo "2. Memasukkan password..."
-    input text "$PASSWORD"
-    sleep 1
-    input keyevent 66 # Tekan Enter
-    
-    echo "Menunggu halaman persetujuan Google..."
-    sleep 8 
-    
-    echo "3. Mencari tombol Setuju / I agree..."
-    DUMP_FILE="/data/local/tmp/g_dump.xml"
-    uiautomator dump $DUMP_FILE > /dev/null 2>&1
-    
-    NODE=$(grep -iE "setuju|agree" $DUMP_FILE | tail -n 1)
-    
-    if [ -n "$NODE" ]; then
-        echo "Tombol ditemukan! Melakukan klik otomatis..."
-        BOUNDS=$(echo "$NODE" | grep -o 'bounds="[^"]*"' | cut -d '"' -f 2)
-        COORDS=$(echo "$BOUNDS" | tr '[],' '   ')
-        set -- $COORDS
-        
-        CX=$(( ($1 + $3) / 2 ))
-        CY=$(( ($2 + $4) / 2 ))
-        
-        input tap $CX $CY
-    else
-        echo "Peringatan: Tombol tidak terbaca. Melakukan klik paksa di sudut kanan bawah..."
-        input tap 850 1800 
-    fi
-    
-    echo "✅ Proses eksekusi untuk $EMAIL selesai!"
-    
-else
-    echo "❌ Batal: Device ID tidak terdaftar di script!"
+# 3. Mencari dan Meng-copy file APK murni dari sistem
+echo ">>> [2/4] Mengekstrak file APK..."
+APK_PATH=$(pm path "$PKG_NAME" | awk -F':' '{print $2}')
+if [ -z "$APK_PATH" ]; then
+    echo ">>> ❌ Error: Aplikasi $PKG_NAME belum terinstal di VSP ini!"
+    exit 1
 fi
+cp "$APK_PATH" "$TMP_DIR/app.apk"
+
+# 4. Membungkus Data Settingan (Mode Anti-FC)
+echo ">>> [3/4] Membungkus data settingan (Anti-FC)..."
+if [ ! -d "$DATA_DIR" ]; then
+    echo ">>> ❌ Error: Folder data $DATA_DIR tidak ditemukan!"
+    exit 1
+fi
+
+# Pindah ke root directory '/' agar saat di-restore dengan '-C /' posisinya pas
+cd / || exit
+# Membungkus data TAPI mengecualikan folder lib & cache agar aman lintas device
+tar -czf "$TMP_DIR/data.tar.gz" \
+    --exclude="data/data/$PKG_NAME/lib" \
+    --exclude="data/data/$PKG_NAME/cache" \
+    --exclude="data/data/$PKG_NAME/code_cache" \
+    "data/data/$PKG_NAME" 2>/dev/null
+
+# 5. Menyatukan APK dan Data menjadi 1 file ZIP
+echo ">>> [4/4] Menggabungkan menjadi $OUTPUT_ZIP..."
+rm -f "$OUTPUT_ZIP"
+cd "$TMP_DIR" || exit
+
+# Membungkus kedua file ke dalam zip (tanpa membuat folder ekstra di dalamnya)
+zip -q "$OUTPUT_ZIP" app.apk data.tar.gz
+
+# Bersih-bersih sampah sementara
+rm -rf "$TMP_DIR"
+
+echo "=========================================================="
+echo ">>> [ SUKSES ] File backup siap di: $OUTPUT_ZIP"
+echo "=========================================================="
