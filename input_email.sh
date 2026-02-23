@@ -1,27 +1,26 @@
 #!/system/bin/sh
 
 # === KONFIGURASI BACKUP ===
-PKG_NAME="com.lftgbqi"
-# Lokasi output file ZIP gabungan (Sesuaikan dengan target install.sh)
+PKG_NAME="com.lftgbqii"
+# Lokasi output file ZIP gabungan
 OUTPUT_ZIP="/sdcard/Download/gg_melolo.zip"
 # Folder sementara
 TMP_DIR="/data/local/tmp/gg_backup_temp"
 DATA_DIR="/data/data/$PKG_NAME"
+# Link script install dari GitHub Mas
+INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/shopeeliterasi-ld/ldldld/refs/heads/main/input_email.sh"
 
 echo "=========================================================="
-echo ">>> === Auto-Backup GameGuardian / Tasker ==="
+echo ">>> === Auto-Backup GameGuardian (Full Settings) ==="
 echo "=========================================================="
 
-# 1. Matikan aplikasi agar database tidak corrupt saat dibackup
-echo ">>> [1/4] Menghentikan aplikasi..."
+echo ">>> [1/5] Menghentikan aplikasi..."
 am force-stop "$PKG_NAME"
 
-# 2. Siapkan folder sementara
 rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
 
-# 3. Mencari dan Meng-copy file APK murni dari sistem
-echo ">>> [2/4] Mengekstrak file APK..."
+echo ">>> [2/5] Mengekstrak file APK..."
 APK_PATH=$(pm path "$PKG_NAME" | awk -F':' '{print $2}')
 if [ -z "$APK_PATH" ]; then
     echo ">>> ❌ Error: Aplikasi $PKG_NAME belum terinstal di VSP ini!"
@@ -29,31 +28,28 @@ if [ -z "$APK_PATH" ]; then
 fi
 cp "$APK_PATH" "$TMP_DIR/app.apk"
 
-# 4. Membungkus Data Settingan (Mode Anti-FC)
-echo ">>> [3/4] Membungkus data settingan (Anti-FC)..."
+echo ">>> [3/5] Membungkus data settingan (Anti-FC)..."
 if [ ! -d "$DATA_DIR" ]; then
     echo ">>> ❌ Error: Folder data $DATA_DIR tidak ditemukan!"
     exit 1
 fi
 
-# Pindah ke root directory '/' agar saat di-restore dengan '-C /' posisinya pas
 cd / || exit
-# Membungkus data TAPI mengecualikan folder lib & cache agar aman lintas device
 tar -czf "$TMP_DIR/data.tar.gz" \
     --exclude="data/data/$PKG_NAME/lib" \
     --exclude="data/data/$PKG_NAME/cache" \
     --exclude="data/data/$PKG_NAME/code_cache" \
     "data/data/$PKG_NAME" 2>/dev/null
 
-# 5. Menyatukan APK dan Data menjadi 1 file ZIP
-echo ">>> [4/4] Menggabungkan menjadi $OUTPUT_ZIP..."
+echo ">>> [4/5] Mengunduh script installer dari GitHub..."
+curl -sL "$INSTALL_SCRIPT_URL" -o "$TMP_DIR/install.sh"
+
+echo ">>> [5/5] Menggabungkan menjadi $OUTPUT_ZIP..."
 rm -f "$OUTPUT_ZIP"
 cd "$TMP_DIR" || exit
 
-# Membungkus kedua file ke dalam zip (tanpa membuat folder ekstra di dalamnya)
-zip -q "$OUTPUT_ZIP" app.apk data.tar.gz
+zip -q "$OUTPUT_ZIP" app.apk data.tar.gz install.sh
 
-# Bersih-bersih sampah sementara
 rm -rf "$TMP_DIR"
 
 echo "=========================================================="
